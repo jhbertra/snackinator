@@ -7,22 +7,31 @@ module Snackinator
     ( snackMain
     ) where
 
-import Control.Arrow
-import Control.Monad
-import Control.Monad.Except
-import Data.Aeson
-import Data.Aeson.Casing
-import Data.Bifunctor
-import Data.List
-import Data.Maybe
-import Debug.Trace
-import GHC.Generics (Generic)
+import Control.Arrow        ((&&&))
+import Control.Monad        (forM_)
+import Control.Monad.Except (ExceptT(..), runExceptT)
+import Data.Aeson           (FromJSON, eitherDecode, genericParseJSON, parseJSON)
+import Data.Aeson.Casing    (aesonPrefix, snakeCase)
+import Data.List            (groupBy, intercalate)
+import Data.Maybe           (mapMaybe)
+import GHC.Generics         (Generic)
 import Network.HTTP.Req
-import Text.Read
-
-import qualified Data.ByteString.Lazy as BL
-import qualified Data.ByteString.Lazy.UTF8 as BU
-import qualified Data.ByteString as B
+    ( GET(..)
+    , NoReqBody(..)
+    , Option
+    , Scheme(Https)
+    , Url
+    , defaultHttpConfig
+    , header
+    , https
+    , lbsResponse
+    , req
+    , responseBody
+    , runReq
+    , (=:)
+    , (/:)
+    )
+import Text.Read            (readMaybe)
 
 snackMain :: IO ()
 snackMain = do
@@ -41,15 +50,15 @@ snackMain = do
         Right snackerSnacks -> do
             putStrLn ""
             putStrLn "Real snacks found:"
-            forM_ snackerSnacks $ \(product, snackers) ->
+            forM_ snackerSnacks $ \(snack, snackers) ->
                 putStrLn $
                     "  "
-                    ++ productTitle product
+                    ++ productTitle snack
                     ++ " (fave snack of: "
                     ++ intercalate ", " (map snackerEmail snackers)
                     ++ ")"
             putStrLn ""
-            let snacksFlat = concatMap (\(product, snackers) -> map (const product) snackers) snackerSnacks
+            let snacksFlat = concatMap (\(snack, snackers) -> map (const snack) snackers) snackerSnacks
             putStrLn $
                 "If all "
                 ++ show (length snacksFlat)
@@ -63,11 +72,11 @@ getSnackers :: ExceptT String IO [Snacker]
 getSnackers = getJsonDoc (https "s3.amazonaws.com" /: "misc-file-snack" /: "MOCK_SNACKER_DATA.json") mempty
 
 getProducts :: ExceptT String IO [Product]
-getProducts = fmap products $ getJsonDoc (https "ca.desknibbles.com" /: "products.json") $
+getProducts = fmap productsProducts $ getJsonDoc (https "ca.desknibbles.com" /: "products.json") $
     "limit" =: (250 :: Int)
     <> header "User-Agent" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.14; rv:68.0) Gecko/20100101 Firefox/68.0"
 
-getJsonDoc :: FromJSON a => Url Https -> Option Https -> ExceptT String IO a
+getJsonDoc :: FromJSON a => Url 'Https -> Option 'Https -> ExceptT String IO a
 getJsonDoc url opts = ExceptT
     . fmap (eitherDecode . responseBody)
     . runReq defaultHttpConfig
@@ -104,7 +113,7 @@ data Product = Product
     }
     deriving (Eq, Ord, Show, Generic)
 
-newtype Products = Products { products :: [Product] } deriving (Eq, Ord, Show, Generic)
+newtype Products = Products { productsProducts :: [Product] } deriving (Eq, Ord, Show, Generic)
 
 instance FromJSON Gender
 instance FromJSON Snacker where
