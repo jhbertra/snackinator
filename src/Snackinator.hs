@@ -55,6 +55,9 @@ snackMain = do
                 ++ show (length snacksFlat)
                 ++ " snackers bought their fave snack, in total it would cost $"
                 ++ show (sum $ mapMaybe (readMaybe :: String -> Maybe Double) $ concatMap (map variantPrice . productVariants) snacksFlat)
+                ++ "."
+            putStrLn ""
+            putStrLn "My favourite snack is boterkoek."
 
 getSnackers :: ExceptT String IO [Snacker]
 getSnackers = getJsonDoc (https "s3.amazonaws.com" /: "misc-file-snack" /: "MOCK_SNACKER_DATA.json") mempty
