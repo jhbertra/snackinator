@@ -24,8 +24,9 @@ dependencies:
 - aeson
 - aeson-casing
 - bytestring
-- HTTP
-- network-uri
+- utf8-string
+- req >= 2.0
+- mtl
 
 library:
   source-dirs: src
